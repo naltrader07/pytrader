@@ -22,24 +22,26 @@ class Sell(QThread):
         self.cond = cond
         self.rx_signal.connect(self.exec_order)
 
-    def __set_time_format(self, date, time):
-        return datetime.datetime.strptime(date + ' ' + time, "%Y-%m-%d %H:%M:%S")
-
-    def send(self, command):
-        self.tx_signal.emit(command)
-        self.orderLoop = QEventLoop()
-        self.orderLoop.exec_()
-
-    def done(self):
-        if self.orderLoop is not None:
-            self.orderLoop.exit()
-
     def exec_order(self, command):
         if ',' in command:
             args = command.split(',')
             eval('self.' + args[0])(*args[1:])
         else:
             eval('self.' + command)()
+
+    def send(self, command):
+        # command를 buy에 보낼때
+        self.tx_signal.emit(command)
+        self.orderLoop = QEventLoop()
+        self.orderLoop.exec_()
+
+    def done(self):
+        # buy에서 task를 마무리할때
+        if self.orderLoop is not None:
+            self.orderLoop.exit()
+
+    def __set_time_format(self, date, time):
+        return datetime.datetime.strptime(date + ' ' + time, "%Y-%m-%d %H:%M:%S")
 
     def monitor(self, close_time):
         gd = get_data(self.user_param['path']['root'])
@@ -58,14 +60,17 @@ class Sell(QThread):
                 now = datetime.datetime.now()
 
                 trade_price = gd.get_current_price(code)
+                # 익절
                 if (sell_price - trade_price) / trade_price < 0.01:
                     command = ';'.join([self.__class__.__name__, 'Buy', 'sell_order,{},지정가'.format(tid)])
                     self.send(command)
 
+                # 손절
                 if trade_price <= stop_price:
                     command = ';'.join([self.__class__.__name__, 'Buy', 'sell_order,{},시장가'.format(tid)])
                     self.send(command)
 
+                # 타임오버
                 if due_date <= now:
                     command = ';'.join([self.__class__.__name__, 'Buy', 'sell_order,{},시장가'.format(tid)])
                     self.send(command)
@@ -83,23 +88,24 @@ class Sell(QThread):
         swing_time = self.__set_time_format(today, self.user_param['market-time']['swing'])
 
         now = datetime.datetime.now()
-        interval = 300
+        interval = 60
         if open_time <= now < close_time:
-            now = Order.roundTime(now, interval)
-            print("wait until {}".format(now))
-            self.monitor(now)
+            dt_time = Order.roundTime(now, interval)
+            print("monitor until {}".format(dt_time))
+            self.monitor(dt_time)
 
             # day trading
             while datetime.datetime.now() < close_time - relativedelta(minutes=30):
                 command = ';'.join([self.__class__.__name__, 'Buy', 'daytrade'])
                 self.send(command)
 
-                now += relativedelta(seconds=interval)
-                print("wait until {}".format(now))
-                self.monitor(now)
+                dt_time += relativedelta(seconds=interval)
+                print("monitor until {}".format(dt_time))
+                self.monitor(dt_time)
 
-            print("wait until {}".format(swing_time))
+            print("monitor until {}".format(swing_time))
             self.monitor(swing_time)
+
             command = ';'.join([self.__class__.__name__, 'Buy', 'swing'])
             self.send(command)
         else:
