@@ -52,7 +52,7 @@ class MyWindow(QMainWindow, ui, Order):
         self.setAccountComboBox()
         self.codeLineEdit.textChanged.connect(self.setCodeName)
         self.orderBtn.clicked.connect(self.sendOrder)
-        # self.inquiryBtn.clicked.connect(self.inquiryBalance)
+        self.inquiryBtn.clicked.connect(self.inquiryBalance)
 
         # 자동 주문
         # 자동 주문을 활성화 하려면 True로 설정

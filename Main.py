@@ -27,7 +27,7 @@ class Main:
             self.threads[cname] = thread(user_param, cond)
             self.threads[cname].tx_signal.connect(self.connect_order)
             self.threads[cname].start()
-        sys.exit(app.exec_())
+        sys.exit(app.exe_())
 
 
 if __name__ == '__main__':
